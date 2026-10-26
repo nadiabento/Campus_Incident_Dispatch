@@ -1,0 +1,5 @@
+fastapi==0.115.0 #framework para criar a API
+uvicorn[standard]==0.30.6 #servidor que põe o FastAPI a escutar pedidos
+sqlalchemy==2.0.35 #fala com a base de dados usando Python em vez de SQL
+psycopg2-binary==2.9.9 #"driver" que liga o SQLAlchemy ao Postgres
+pydantic==2.9.2 #valida dados (usado pelo FastAPI)
