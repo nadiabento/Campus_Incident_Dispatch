@@ -4,7 +4,7 @@ from app import config
 
 app = FastAPI(
     title="Serviço de Incidentes",
-    description="Gestão de incidentes do campus (Pessoa A)",
+    description="Gestão de incidentes do campus",
     version="1.0.0"
 )
 
