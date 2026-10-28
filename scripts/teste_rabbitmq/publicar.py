@@ -10,6 +10,8 @@ from rabbit import EXCHANGE, ligar
 # O tipo de evento vem da linha de comandos; por omissão é INCIDENT_CREATED
 tipo = sys.argv[1] if len(sys.argv) > 1 else "INCIDENT_CREATED"
 incidente = sys.argv[2] if len(sys.argv) > 2 else "1"
+# O eventId pode vir da linha de comandos, para testar eventos duplicados
+event_id = sys.argv[3] if len(sys.argv) > 3 else str(uuid.uuid4())
 
 ligacao, canal = ligar()
 
@@ -20,7 +22,7 @@ if tipo == "INVALIDO":
 else:
     # Monta um evento de exemplo com identificador único
     evento = {
-        "eventId": str(uuid.uuid4()),
+        "eventId": event_id,
         "eventType": tipo,
         "incidentId": incidente,
         "version": 1,
