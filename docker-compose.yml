@@ -38,6 +38,42 @@ services:
       users-db:
         condition: service_healthy
 
+    # Base de dados do serviço de notificações
+  notifications-db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: notifications
+      POSTGRES_PASSWORD: notifications
+      POSTGRES_DB: notificationsdb
+    ports:
+      - "2303:5432"
+    volumes:
+      - notifications-data:/var/lib/postgresql/data
+    # Verifica se a base de dados já está pronta
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U notifications -d notificationsdb"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # Serviço de notificações (API e consumidor de eventos)
+  notifications-service:
+    build: ./services/notifications-service
+    environment:
+      DATABASE_URL: postgresql://notifications:notifications@notifications-db:5432/notificationsdb
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: "5672"
+      # Escreve os logs de imediato, sem esperar
+      PYTHONUNBUFFERED: "1"
+    ports:
+      - "2103:8000"
+    depends_on:
+      notifications-db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_started
+
 # Volume onde ficam guardados os dados da base de dados
 volumes:
   users-data:
+  notifications-data:
