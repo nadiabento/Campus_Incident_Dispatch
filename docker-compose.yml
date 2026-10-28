@@ -38,7 +38,38 @@ services:
       users-db:
         condition: service_healthy
 
-    # Base de dados do serviço de notificações
+  # Base de dados do serviço de incidentes
+  incidents-db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: incidents
+      POSTGRES_PASSWORD: incidents
+      POSTGRES_DB: incidentsdb
+    ports:
+      - "2302:5432"
+    volumes:
+      - incidents-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U incidents -d incidentsdb"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # Serviço de incidentes (API em FastAPI)
+  incidents-service:
+    build: ./services/incidents-service
+    environment:
+      DATABASE_URL: postgresql://incidents:incidents@incidents-db:5432/incidentsdb
+      USERS_SERVICE_URL: http://users-service:8000
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672/%2F
+    ports:
+      - "2102:8000"
+    # Só arranca depois da base de dados estar pronta
+    depends_on:
+      incidents-db:
+        condition: service_healthy
+
+  # Base de dados do serviço de notificações
   notifications-db:
     image: postgres:16
     environment:
@@ -73,7 +104,8 @@ services:
       rabbitmq:
         condition: service_started
 
-# Volume onde ficam guardados os dados da base de dados
+# Volumes onde ficam guardados os dados das bases de dados
 volumes:
   users-data:
+  incidents-data:
   notifications-data:
