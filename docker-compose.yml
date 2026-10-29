@@ -103,6 +103,21 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_started
+  # Segunda instância do serviço de notificações, para demonstrar escalabilidade
+  notifications-service-2:
+    build: ./services/notifications-service
+    environment:
+      DATABASE_URL: postgresql://notifications:notifications@notifications-db:5432/notificationsdb
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: "5672"
+      PYTHONUNBUFFERED: "1"
+    ports:
+      - "2104:8000"
+    depends_on:
+      notifications-db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_started
 
 # Volumes onde ficam guardados os dados das bases de dados
 volumes:
