@@ -12,6 +12,8 @@ USERS_TIMEOUT = float(os.getenv("USERS_TIMEOUT", "2"))            # segundos por
 USERS_RETRIES = int(os.getenv("USERS_RETRIES", "3"))              # nº de tentativas
 USERS_BACKOFF = float(os.getenv("USERS_BACKOFF", "0.3"))          # espera base entre tentativas
 USERS_CACHE_TTL = int(os.getenv("USERS_CACHE_TTL", "600"))        # validade da cache de recurso (s)
+USERS_TOTAL_BUDGET = float(os.getenv("USERS_TOTAL_BUDGET", "5"))      # tempo máximo a tentar (s)
+USERS_BREAKER_SECONDS = int(os.getenv("USERS_BREAKER_SECONDS", "15"))  # tempo sem voltar a tentar (s)
 
 # Broker de mensagens
 RABBITMQ_URL = os.getenv("RABBITMQ_URL", "amqp://guest:guest@localhost:2201/%2F")
