@@ -1,0 +1,197 @@
+### ============================================================
+### Exemplos de pedidos REST - Serviço de Incidentes (e utilizadores)
+### Usar com a extensão "REST Client" (VS Code) ou o HTTP Client (IntelliJ).
+### Pré-requisito: docker compose up --build  (BD vazia)
+###
+### Quem faz o pedido vai no cabeçalho X-User-Id (não há autenticação completa).
+### Numa BD vazia, os utilizadores criados abaixo ficam com estes ids:
+###   1 = Ana (CAMPUS_USER)   2 = Rui (TECHNICIAN)
+###   3 = Eva (ADMIN)         4 = Tó  (TECHNICIAN)
+### O primeiro incidente fica com id 1; a "version" sobe 1 em cada alteração.
+### ============================================================
+
+@users = http://localhost:2101
+@inc = http://localhost:2102
+@incidentId = 1
+@secondId = 2
+
+
+################ 0. PREPARAÇÃO: criar utilizadores ################
+
+### Utilizador do campus (id 1)
+POST {{users}}/users
+Content-Type: application/json
+
+{ "name": "Ana", "email": "ana@ua.pt", "role": "CAMPUS_USER" }
+
+### Técnico (id 2)
+POST {{users}}/users
+Content-Type: application/json
+
+{ "name": "Rui", "email": "rui@ua.pt", "role": "TECHNICIAN" }
+
+### Administrador (id 3)
+POST {{users}}/users
+Content-Type: application/json
+
+{ "name": "Eva", "email": "eva@ua.pt", "role": "ADMIN" }
+
+### Segundo técnico (id 4)
+POST {{users}}/users
+Content-Type: application/json
+
+{ "name": "Tó", "email": "to@ua.pt", "role": "TECHNICIAN" }
+
+
+################ 1. FLUXO COMPLETO (caminho feliz) ################
+### ABERTO -> ATRIBUIDO -> EM_CURSO -> RESOLVIDO -> ENCERRADO
+### Cada passo gera um evento (CREATED, ASSIGNED, UPDATED, UPDATED, CLOSED)
+
+### 1.1 Criar incidente (Ana)  -> 201, status ABERTO, version 1
+POST {{inc}}/incidents
+Content-Type: application/json
+X-User-Id: 1
+
+{
+  "category": "EQUIPAMENTO",
+  "location": "Bloco B, sala 2.14",
+  "description": "Projetor não liga",
+  "priority": "ALTA"
+}
+
+### 1.2 Atribuir ao técnico Rui (só ADMIN)  -> 200, ATRIBUIDO, version 2
+PUT {{inc}}/incidents/{{incidentId}}/assign
+Content-Type: application/json
+X-User-Id: 3
+
+{ "technicianId": 2, "version": 1 }
+
+### 1.3 Técnico atribuído põe em curso  -> 200, EM_CURSO, version 3
+PUT {{inc}}/incidents/{{incidentId}}/status
+Content-Type: application/json
+X-User-Id: 2
+
+{ "status": "EM_CURSO", "version": 2 }
+
+### 1.4 Técnico marca como resolvido  -> 200, RESOLVIDO, version 4
+PUT {{inc}}/incidents/{{incidentId}}/status
+Content-Type: application/json
+X-User-Id: 2
+
+{ "status": "RESOLVIDO", "version": 3 }
+
+### 1.5 Encerrar (ADMIN ou técnico atribuído)  -> 200, ENCERRADO, version 5
+PUT {{inc}}/incidents/{{incidentId}}/close
+Content-Type: application/json
+X-User-Id: 3
+
+{ "version": 4 }
+
+
+################ 2. CONSULTAS (não exigem X-User-Id) ################
+
+### 2.1 Detalhe
+GET {{inc}}/incidents/{{incidentId}}
+
+### 2.2 Listar todos
+GET {{inc}}/incidents
+
+### 2.3 Filtrar por estado
+GET {{inc}}/incidents?status=ABERTO
+
+### 2.4 Filtrar por prioridade
+GET {{inc}}/incidents?priority=ALTA
+
+### 2.5 Filtrar por técnico atribuído
+GET {{inc}}/incidents?assignedTo=2
+
+### 2.6 Estado do serviço (BD, broker e eventos por publicar)
+GET {{inc}}/health
+
+
+################ 3. ERROS ESPERADOS ################
+### Usam o 2.º incidente: executar primeiro o pedido 1.1 outra vez (fica com id 2).
+
+### 3.1 Sem cabeçalho X-User-Id  -> 401
+POST {{inc}}/incidents
+Content-Type: application/json
+
+{ "category": "REDE", "location": "Biblioteca", "description": "Sem wifi" }
+
+### 3.2 Utilizador que não existe  -> 404
+POST {{inc}}/incidents
+Content-Type: application/json
+X-User-Id: 999
+
+{ "category": "REDE", "location": "Biblioteca", "description": "Sem wifi" }
+
+### 3.3 Dados inválidos (categoria desconhecida)  -> 422
+POST {{inc}}/incidents
+Content-Type: application/json
+X-User-Id: 1
+
+{ "category": "VOAR", "location": "Biblioteca", "description": "x" }
+
+### 3.4 Incidente que não existe  -> 404
+GET {{inc}}/incidents/9999
+
+### 3.5 CAMPUS_USER a tentar atribuir  -> 403
+PUT {{inc}}/incidents/{{secondId}}/assign
+Content-Type: application/json
+X-User-Id: 1
+
+{ "technicianId": 2, "version": 1 }
+
+### 3.6 Atribuir a alguém que não é técnico  -> 422
+PUT {{inc}}/incidents/{{secondId}}/assign
+Content-Type: application/json
+X-User-Id: 3
+
+{ "technicianId": 1, "version": 1 }
+
+### 3.7 Transição inválida (ABERTO -> EM_CURSO)  -> 409
+PUT {{inc}}/incidents/{{secondId}}/status
+Content-Type: application/json
+X-User-Id: 3
+
+{ "status": "EM_CURSO", "version": 1 }
+
+### 3.8 Encerrar sem estar RESOLVIDO  -> 409
+PUT {{inc}}/incidents/{{secondId}}/close
+Content-Type: application/json
+X-User-Id: 3
+
+{ "version": 1 }
+
+### 3.9 Usar /status para atribuir  -> 422 (usar /assign)
+PUT {{inc}}/incidents/{{secondId}}/status
+Content-Type: application/json
+X-User-Id: 3
+
+{ "status": "ATRIBUIDO", "version": 1 }
+
+### 3.10 Técnico que NÃO é o atribuído  -> 403
+PUT {{inc}}/incidents/{{secondId}}/status
+Content-Type: application/json
+X-User-Id: 4
+
+{ "status": "EM_CURSO", "version": 2 }
+
+
+################ 4. CONFLITO DE VERSÃO (controlo otimista) ################
+### Usa o 2.º incidente (ainda ABERTO, version 1): atribuir (version passa a 2)
+### e repetir o pedido com a version antiga.
+
+### 4.1 Atribuir ao Rui com version 1  -> 200
+PUT {{inc}}/incidents/{{secondId}}/assign
+Content-Type: application/json
+X-User-Id: 3
+
+{ "technicianId": 2, "version": 1 }
+
+### 4.2 Repetir com a mesma version 1 (agora desatualizada)  -> 409
+PUT {{inc}}/incidents/{{secondId}}/assign
+Content-Type: application/json
+X-User-Id: 3
+
+{ "technicianId": 4, "version": 1 }

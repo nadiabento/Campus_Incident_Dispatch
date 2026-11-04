@@ -133,8 +133,6 @@ def test_validation_422(client):
     r = client.post("/incidents", json={"category": "XPTO", "location": "", "description": "x"},
                     headers=hdr(1))
     assert r.status_code == 422
-
-
 # ---------------- tolerância a falhas: users-service ----------------
 def test_users_client_retries_then_unavailable_without_cache(monkeypatch):
     users_client.clear_cache()
@@ -167,4 +165,22 @@ def test_users_client_falls_back_to_cache(monkeypatch):
         raise httpx.ConnectError("down")
 
     monkeypatch.setattr(httpx, "get", boom)
-    assert users_client.get_user(1)["role"] == "ADMIN"   
+    assert users_client.get_user(1)["role"] == "ADMIN"               # recurso: usa a cache
+
+
+def test_users_client_circuit_breaker_skips_calls(monkeypatch):
+    users_client.clear_cache()
+    monkeypatch.setattr(config, "USERS_BACKOFF", 0)
+    calls = []
+
+    def boom(*a, **k):
+        calls.append(1)
+        raise httpx.ConnectError("down")
+
+    monkeypatch.setattr(httpx, "get", boom)
+    with pytest.raises(users_client.UsersUnavailable):
+        users_client.get_user(1)
+    tentativas = len(calls)
+    with pytest.raises(users_client.UsersUnavailable):
+        users_client.get_user(1)
+    assert len(calls) == tentativas                                  # circuito aberto: nem tentou
