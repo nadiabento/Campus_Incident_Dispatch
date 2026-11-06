@@ -82,8 +82,8 @@ Com `notifications-service` e `notifications-service-2` a correr, enviar N event
 | A3 | 04/11/2026 | OK | 401, 404, 403, 422 e 403 como esperado |
 | A4 | 04/11/2026 | OK | 3.3 deu 422 |
 | A5 | 04/11/2026 | OK | 4.1 deu 200 e 4.2 deu 409, sem evento no 4.2 |
-| A6 | 05/11/2026 | OK | 6 rondas (2 execuções): sempre um 200 e um 409, version final 2; incidentes 4 e 5 com um só INCIDENT_ASSIGNED |
-| A7 | 05/11/2026 | OK | Filtros por status, priority e assignedTo corretos; assignedTo=4 devolve lista vazia |
+| A6 | 05/11/2026 | OK | 9 rondas (3 execuções): sempre um 200 e um 409, version final 2; incidentes 4 e 5 com um só INCIDENT_ASSIGNED |
+| A7 | 05/11/2026 | OK | Feito antes do A6: filtros por status, priority e assignedTo corretos; assignedTo=4 devolvia lista vazia |
 | B1 | | | |
 | B2 | | | |
 | B3 | | | |
