@@ -195,3 +195,19 @@ Content-Type: application/json
 X-User-Id: 3
 
 { "technicianId": 4, "version": 1 }
+
+
+################ 5. DADOS EXTRA PARA TESTAR OS FILTROS ################
+### Incidente de prioridade BAIXA que fica ABERTO (cenário A7)
+
+### 5.1 Criar incidente BAIXA (Ana)  -> 201
+POST {{inc}}/incidents
+Content-Type: application/json
+X-User-Id: 1
+
+{
+  "category": "LIMPEZA",
+  "location": "Cantina",
+  "description": "Chão molhado",
+  "priority": "BAIXA"
+}

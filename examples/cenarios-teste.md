@@ -28,18 +28,13 @@ Convenção: ids 1 = Ana (CAMPUS_USER), 2 = Rui (TECHNICIAN), 3 = Eva (ADMIN), 4
 **Pedidos:** secção 4. **Esperado:** o 4.1 devolve 200 e o 4.2 devolve 409 com mensagem de conflito de versão. O 4.2 não gera evento.
 
 ### A6. Pedidos simultâneos sobre o mesmo incidente
-Criar um incidente ABERTO (id N, version 1) e disparar dois pedidos ao mesmo tempo com a mesma versão:
+Executar o script (com o Docker a correr e os 4 utilizadores criados):
 
-```bash
-N=3   # id de um incidente ABERTO com version 1
-for tech in 2 4; do
-  curl -s -o /dev/null -w "técnico $tech -> %{http_code}\n" -X PUT \
-    http://localhost:2102/incidents/$N/assign \
-    -H "Content-Type: application/json" -H "X-User-Id: 3" \
-    -d "{\"technicianId\": $tech, \"version\": 1}" &
-done; wait
+```powershell
+python scripts/teste-concorrencia.py http://localhost:2102 3
 ```
-**Esperado:** um 200 e um 409. `GET /incidents/N` mostra `version: 2` (só uma alteração entrou) e só existe um `INCIDENT_ASSIGNED` para esse incidente.
+Em cada ronda o script cria um incidente e dispara ao mesmo tempo duas atribuições (técnicos 2 e 4) com a mesma `version`.
+**Esperado:** em cada ronda um 200 e um 409, `version` final 2, e no fim `3/3 rondas OK`. Em `GET :2103/notifications?incidentId=N` só existe um `INCIDENT_ASSIGNED` por incidente.
 
 ### A7. Consultas e filtros
 **Pedidos:** secção 2. **Esperado:** filtros por `status`, `priority` e `assignedTo` devolvem só os incidentes correspondentes.
@@ -77,6 +72,7 @@ Publicar um evento sem `eventType` ou sem `incidentId`. **Esperado:** é rejeita
 ### C3. Escalabilidade
 Com `notifications-service` e `notifications-service-2` a correr, enviar N eventos. **Esperado:** os logs das duas instâncias mostram as mensagens repartidas entre elas.
 
+
 ## Registo de execução (preencher durante os testes)
 
 | Cenário | Data | Resultado (OK/falhou) | Notas |
@@ -86,8 +82,8 @@ Com `notifications-service` e `notifications-service-2` a correr, enviar N event
 | A3 | 04/11/2026 | OK | 401, 404, 403, 422 e 403 como esperado |
 | A4 | 04/11/2026 | OK | 3.3 deu 422 |
 | A5 | 04/11/2026 | OK | 4.1 deu 200 e 4.2 deu 409, sem evento no 4.2 |
-| A6 | | | |
-| A7 | | | |
+| A6 | 05/11/2026 | OK | 6 rondas (2 execuções): sempre um 200 e um 409, version final 2; incidentes 4 e 5 com um só INCIDENT_ASSIGNED |
+| A7 | 05/11/2026 | OK | Filtros por status, priority e assignedTo corretos; assignedTo=4 devolve lista vazia |
 | B1 | | | |
 | B2 | | | |
 | B3 | | | |
