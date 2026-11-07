@@ -6,6 +6,13 @@ services:
     ports:
       - "2201:5672"   # porta das mensagens
       - "2202:15672"  # consola web (guest/guest)
+    # Verifica se o broker já aceita ligações
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "check_port_listener", "5672"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 20s
 
   # Base de dados do serviço de utilizadores
   users-db:
@@ -58,16 +65,27 @@ services:
   # Serviço de incidentes (API em FastAPI)
   incidents-service:
     build: ./services/incidents-service
+    restart: on-failure
     environment:
       DATABASE_URL: postgresql://incidents:incidents@incidents-db:5432/incidentsdb
       USERS_SERVICE_URL: http://users-service:8000
       RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672/%2F
     ports:
       - "2102:8000"
-    # Só arranca depois da base de dados estar pronta
+    # Só arranca depois da BD, do RabbitMQ e do serviço de utilizadores
     depends_on:
       incidents-db:
         condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      users-service:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
 
   # Base de dados do serviço de notificações
   notifications-db:
@@ -103,6 +121,7 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_started
+
   # Segunda instância do serviço de notificações, para demonstrar escalabilidade
   notifications-service-2:
     build: ./services/notifications-service

@@ -147,7 +147,8 @@ class OutboxPublisher(threading.Thread):
                 # "Dorme" 1s mas mantém os heartbeats da ligação vivos
                 self._conn.process_data_events(time_limit=1)
             except Exception as exc:
-                log.error("Falha na publicação de eventos (%s). Nova tentativa em %.0fs", exc, backoff)
+                log.error("Falha na publicação de eventos (%s: %s). Nova tentativa em %.0fs",
+                      type(exc).__name__, exc, backoff)
                 self._disconnect()
                 self._stop_flag.wait(backoff)
                 backoff = min(backoff * 2, config.PUBLISH_MAX_BACKOFF)
@@ -155,3 +156,4 @@ class OutboxPublisher(threading.Thread):
 
     def stop(self) -> None:
         self._stop_flag.set()
+        
