@@ -82,7 +82,8 @@ Campos do incidente na resposta: `id`, `category`, `location`, `description`, `p
 
 Em cada pedido que leva `X-User-Id`, chama `GET /users/{id}` para validar o utilizador e obter o papel.
 
-- Timeout de 2 s por tentativa, 3 tentativas com espera crescente (0,3 s, 0,6 s), no máximo 5 s no total.
+- Timeout de 2 s por tentativa e até 3 tentativas, com espera crescente entre elas (0,3 s e 0,6 s). Os 5 s de `USERS_TOTAL_BUDGET` só servem para decidir se se tenta outra vez: se já passaram mais de 5 s desde a primeira tentativa, não volta a tentar. Não limitam a duração de cada tentativa, por isso uma chamada a um serviço parado pode demorar cerca de 9 s (8,8 s medidos no cenário B1).
+- Depois de esgotar as tentativas, durante 15 s o serviço nem tenta chamar o Serviço de Utilizadores (circuit breaker), e a resposta é imediata (0,3 s medidos no cenário B2).
 - Depois de falhar, não volta a tentar durante 15 s (circuit breaker).
 - Modo de recurso: utilizadores já consultados ficam em cache 10 minutos e continuam a ser aceites com o serviço em baixo. Utilizadores desconhecidos recebem 503.
 

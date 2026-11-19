@@ -95,6 +95,6 @@ def correr():
             canal.basic_consume(queue=config.FILA, on_message_callback=processar, auto_ack=False)
             print("Consumidor ativo, à espera de mensagens")
             canal.start_consuming()
-        except pika.exceptions.AMQPError as erro:
+        except (pika.exceptions.AMQPError, OSError) as erro:
             print("Ligação ao RabbitMQ perdida:", erro)
             time.sleep(5)
